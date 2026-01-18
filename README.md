@@ -1,109 +1,95 @@
-# 📱 Thuf-Weaponizer - Documentação Oficial
+# WEAPONIZER PRO
 
-O **APK Pentest Framework PRO** é uma solução completa para automação de
-engenharia reversa, análise de segurança e modificação de aplicativos
-Android. Este framework foi desenvolvido para centralizar tarefas
-complexas em um ambiente interativo e profissional.
+O **WEAPONIZER PRO** é um framework avançado de engenharia reversa e
+weaponization para aplicativos Android (APK). Esta edição especial "Red"
+foi projetada para oferecer uma interface moderna, agressiva e um motor
+de compatibilidade universal.
 
-**Autor:** Romildo (thuf)
+**Desenvolvedor:** Romildo (thuf)
+
+------------------------------------------------------------------------
+![Uploading image.png…]()
+
+
+## 1. Visão Geral
+
+O framework automatiza o ciclo completo de análise ofensiva de APKs. Ele
+resolve dependências de forma autônoma, realiza auditorias estáticas em
+busca de falhas de segurança e permite a reconstrução total do app com
+assinaturas digitais válidas.
 
 ------------------------------------------------------------------------
 
-## 📑 1. Visão Geral
+## 2. Recursos Exclusivos
 
-O script atua como um orquestrador de ferramentas de segurança,
-permitindo que o usuário descompile um APK, realize análises estáticas
-profundas à procura de vulnerabilidades e segredos, injete modificações
-e, por fim, reconstrua e assine o aplicativo para instalação.
-
-------------------------------------------------------------------------
-
-## 🚀 2. Recursos Principais
-
--   **Auto-Bootstrap (Auto-Instalação):** Na primeira execução, o script
-    verifica se ferramentas como `apktool`, `java`, `zipalign` e
-    `apksigner` estão presentes. Caso não estejam, ele realiza a
-    instalação automática via gerenciador de pacotes `apt`.
--   **Análise de Integridade Forense:** Geração automática de Hashes MD5
-    e SHA-256 para documentação e verificação de arquivos.
--   **Scanner de Vulnerabilidades Estático:**
-    -   Identifica se o APK é depurável (`android:debuggable="true"`).
-    -   Detecta configurações de segurança de rede que facilitam ataques
-        Man-in-the-Middle (MITM).
-    -   Lista componentes exportados que podem sofrer ataques de Intent
-        Injection.
--   **Busca por Hardcoded Secrets (Segredos expostos):** Varredura
-    inteligente em busca de chaves de API (Google, Firebase, AWS) e
-    tokens de autenticação dentro do código Smali e arquivos de
-    recursos.
--   **Build & Sign (Weaponization):**
-    -   Recompila a estrutura de pastas em um novo binário.
-    -   Aplica assinaturas digitais (Esquema V2/V3) essenciais para
-        versões recentes do Android (11+).
-    -   Gerencia automaticamente a criação de chaves (Keystores) de
-        laboratório.
+-   **Motor Universal de Bootstrap:** Suporte a múltiplos gerenciadores
+    de pacotes (`APT`, `DNF`, `PACMAN`, `BREW`).
+-   **Fail-Safe Manual:** Caso os repositórios do sistema falhem, o
+    script realiza o download direto dos binários oficiais do
+    **Apktool** (v2.9.3).
+-   **Red Edition HUD:** Interface de comando estilizada em tons de
+    vermelho e branco (Cyber-Red).
+-   **Security Auditor:**
+    -   Detecta Modo Debug ativado (Risco Crítico).
+    -   Identifica configurações de rede que permitem interceptação de
+        tráfego HTTPS (Bypass de SSL Pinning).
+    -   Mapeia componentes exportados (Vulnerabilidades de Intent
+        Injection).
+-   **Re-Signature Engine:** Gera automaticamente chaves RSA de 2048
+    bits para assinatura e selo de integridade.
 
 ------------------------------------------------------------------------
 
-## 🛠 3. Instalação e Requisitos
+## 3. Requisitos e Instalação
 
--   **Sistema Recomendado:** Kali Linux, Parrot Security, Ubuntu ou
-    Debian.
--   **Python:** Versão 3.x instalada.
--   **Permissões de Admin:** É necessário acesso `sudo` apenas durante a
-    execução inicial para a auto-instalação das ferramentas de sistema.
+-   **SO:** Linux (Qualquer distribuição) ou macOS.
+-   **Python:** 3.x.
+-   **Conexão:** Necessária apenas na primeira execução para baixar as
+    ferramentas.
 
-------------------------------------------------------------------------
-
-## 💻 4. Guia de Uso Interativo
-
-### Passo 1: Inicialização
-
-Execute o script no terminal:
+### Como Iniciar:
 
 ``` bash
-python3 Thuf-Weaponizer.py
+python3 weaponizer.py
 ```
 
-### Passo 2: Descompilação e Reconhecimento (Opção 1)
+------------------------------------------------------------------------
 
-1.  Informe o caminho do seu arquivo `.apk`.
-2.  O script exibirá as características de integridade do arquivo.
-3.  Após a descompilação, verifique a saída do terminal; o script
-    apresentará alertas automáticos sobre falhas de segurança
-    encontradas no código-fonte e no manifesto.
+## 4. Guia de Operação
 
-### Passo 3: Modificação (Manual)
+### Opção 1: Reverse Engineering (Decompile & Scan)
 
-1.  Navegue até a pasta criada pelo script (mesmo nome do APK).
-2.  Realize as alterações necessárias nos arquivos `.smali` ou no
-    `AndroidManifest.xml`.
+-   **Função:** Extrai o código Smali, Manifesto e Recursos.
+-   **Análise:** Realiza uma varredura automática por falhas de
+    configuração.
+-   **Saída:** Cria um diretório de projeto pronto para modificação
+    manual.
 
-### Passo 4: Build e Assinatura (Opção 2)
+### Opção 2: Payload Injection (Build & Sign)
 
-1.  Escolha a opção 2 no menu principal.
-2.  Digite o nome da pasta do projeto que você editou.
-3.  O script irá gerar um arquivo final chamado
-    `nome_da_pasta_modified_signed.apk`, devidamente alinhado e pronto
-    para ser instalado no dispositivo de teste.
+-   **Função:** Recompila a pasta do projeto em um novo binário `.apk`.
+-   **Assinatura:** Aplica assinaturas V2/V3 automaticamente.
+-   **Resultado:** Gera um arquivo `_weaponized.apk` otimizado e pronto
+    para instalação.
 
 ------------------------------------------------------------------------
 
-## 🔍 5. Análise Técnica de Segurança
+## 5. Auditoria Técnica
 
-O framework realiza buscas automatizadas por: - **Firebase/Google API
-Keys:** Detecta chaves que podem permitir acesso não autorizado a bancos
-de dados na nuvem. - **AWS Credentials:** Procura por chaves de acesso e
-segredos do ecossistema Amazon. - **Network Security Config:** Indica se
-o app permite a instalação de certificados de confiança de usuário,
-facilitando o uso de Proxies como Burp Suite.
+O framework analisa proativamente: 1. **android:debuggable:** Essencial
+para prevenir que atacantes conectem debuggers ao processo em tempo de
+execução. 2. **Network Security Config:** Notifica se o desenvolvedor
+permitiu certificados de usuário, o que viabiliza o uso de ferramentas
+como Burp Suite e OWASP ZAP. 3. **Exported Components:** Lista portas de
+entrada que podem ser exploradas para roubo de dados ou escalada de
+privilégios via intents maliciosas.
 
 ------------------------------------------------------------------------
 
-## ⚠️ 6. Aviso Legal
+## 6. Aviso Legal
 
-Esta ferramenta deve ser utilizada exclusivamente por profissionais de
-segurança e pesquisadores em ambientes controlados e em ativos para os
-quais possuem autorização explícita de teste. O autor não se
-responsabiliza por danos, uso indevido ou consequências legais
-resultantes do uso desta ferramenta para fins não éticos.
+Este software é fornecido estritamente para fins de pesquisa de
+segurança, auditoria e testes de penetração autorizados. O autor não se
+responsabiliza por qualquer uso indevido, danos ou implicações legais
+resultantes da utilização desta ferramenta em ambientes sem autorização
+prévia por escrito.
