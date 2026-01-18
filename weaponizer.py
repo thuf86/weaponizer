@@ -19,10 +19,8 @@ def log(msg, level="info"):
     print(f"{p.get(level, '[*]')} {msg}")
 
 def exibir_banner():
-    """Exibe o novo banner moderno na cor vermelha."""
     os.system('clear' if os.name == 'posix' else 'cls')
     
-    # Banner Moderno em Blocos Sólidos
     banner = f"""
 {RED} ██╗    ██╗███████╗ █████╗ ██████╗  ██████╗ ███╗   ██╗██╗███████╗███████╗██████╗ 
 {RED} ██║    ██║██╔════╝██╔══██╗██╔══██╗██╔═══██╗████╗  ██║██║╚══███╔╝██╔════╝██╔══██╗
@@ -37,24 +35,20 @@ def exibir_banner():
     print(banner)
 
 def bootstrap():
-    """Motor de instalação universal com detecção de falhas."""
     exibir_banner()
     log("Iniciando rotina de conformidade do sistema...", "info")
     time.sleep(1)
 
-    # 1. Verificar Java
     if not which("java"):
         log("Java Runtime não detectado no PATH.", "warn")
         install_package("openjdk-17-jdk")
 
-    # 2. Verificar Apktool (Download Manual se necessário)
     if not which("apktool"):
         log("Apktool ausente. Tentando resolver via repositórios...", "warn")
         if not install_package("apktool"):
             log("Repositórios falharam. Iniciando download dos binários oficiais...", "warn")
             download_apktool_manual()
 
-    # 3. Verificar Build Tools
     if not which("zipalign") or not which("apksigner"):
         log("Build-tools (zipalign/apksigner) ausentes.", "warn")
         install_package("apksigner zipalign")
@@ -158,3 +152,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
