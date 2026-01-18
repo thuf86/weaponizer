@@ -2,156 +2,158 @@ import subprocess
 import re
 import os
 import sys
-import hashlib
+import time
+import urllib.request
 from shutil import which
 
-# --- CONFIGURAÇÕES DE INTERFACE ---
-C_GREEN, C_YELLOW, C_RED, C_BLUE, C_BOLD, C_RESET = "\033[92m", "\033[93m", "\033[91m", "\033[94m", "\033[1m", "\033[0m"
+# --- PALETA DE CORES MODERNA ---
+RED = "\33[91m"
+DARK_RED = "\33[31m"
+WHITE = "\33[97m"
+BOLD = "\33[1m"
+RESET = "\33[0m"
+YELLOW = "\33[93m"
 
 def log(msg, level="info"):
-    prefixes = {"info": f"{C_BLUE}[*]{C_RESET}", "success": f"{C_GREEN}[+]{C_RESET}", "warn": f"{C_YELLOW}[!]{C_RESET}", "error": f"{C_RED}[-]{C_RESET}"}
-    print(f"{prefixes.get(level, '[*]')} {msg}")
+    p = {"info": f"{WHITE}[*]{RESET}", "success": f"{RED}[+]{RESET}", "warn": f"{YELLOW}[!]{RESET}", "error": f"{BOLD}{RED}[-]{RESET}"}
+    print(f"{p.get(level, '[*]')} {msg}")
 
-# --- SISTEMA DE AUTO-INSTALAÇÃO ---
+def exibir_banner():
+    """Exibe o novo banner moderno na cor vermelha."""
+    os.system('clear' if os.name == 'posix' else 'cls')
+    
+    # Banner Moderno em Blocos Sólidos
+    banner = f"""
+{RED} ██╗    ██╗███████╗ █████╗ ██████╗  ██████╗ ███╗   ██╗██╗███████╗███████╗██████╗ 
+{RED} ██║    ██║██╔════╝██╔══██╗██╔══██╗██╔═══██╗████╗  ██║██║╚══███╔╝██╔════╝██╔══██╗
+{DARK_RED} ██║ █╗ ██║█████╗  ███████║██████╔╝██║   ██║██╔██╗ ██║██║  ███╔╝ █████╗  ██████╔╝
+{DARK_RED} ██║███╗██║██╔══╝  ██╔══██║██╔═══╝ ██║   ██║██║╚██╗██║██║ ███╔╝  ██╔══╝  ██╔══██╗
+{RED} ╚███╔███╔╝███████╗██║  ██║██║     ╚██████╔╝██║ ╚████║██║███████╗███████╗██║  ██║
+{RED}  ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝╚═╝      ╚═════╝ ╚═╝  ╚═══╝╚═╝╚══════╝╚══════╝╚═╝  ╚═╝
+{RESET}
+ {WHITE}{BOLD}WEAPONIZER PRO{RESET} | {WHITE}Dev: Romildo (thuf){RESET}
+ {DARK_RED}─────────────────────────────────────────────────────────────────────────────{RESET}
+    """
+    print(banner)
 
-def instalar_dependencias():
-    """Tenta instalar as dependências sistêmicas caso faltem."""
-    log("Iniciando verificação de dependências para instalação...", "info")
-    
-    # Lista de pacotes necessários (Nome no sistema : Comando para testar)
-    deps = {
-        "openjdk-17-jdk": "java",
-        "apktool": "apktool",
-        "zipalign": "zipalign",
-        "apksigner": "apksigner"
-    }
-    
-    faltantes = []
-    for pkg, cmd in deps.items():
-        if not which(cmd):
-            faltantes.append(pkg)
-    
-    if faltantes:
-        log(f"As seguintes ferramentas estão faltando: {', '.join(faltantes)}", "warn")
-        confirm = input(f"{C_BOLD}[?] Deseja tentar instalá-las automaticamente? (s/n): {C_RESET}").lower()
-        
-        if confirm == 's':
+def bootstrap():
+    """Motor de instalação universal com detecção de falhas."""
+    exibir_banner()
+    log("Iniciando rotina de conformidade do sistema...", "info")
+    time.sleep(1)
+
+    # 1. Verificar Java
+    if not which("java"):
+        log("Java Runtime não detectado no PATH.", "warn")
+        install_package("openjdk-17-jdk")
+
+    # 2. Verificar Apktool (Download Manual se necessário)
+    if not which("apktool"):
+        log("Apktool ausente. Tentando resolver via repositórios...", "warn")
+        if not install_package("apktool"):
+            log("Repositórios falharam. Iniciando download dos binários oficiais...", "warn")
+            download_apktool_manual()
+
+    # 3. Verificar Build Tools
+    if not which("zipalign") or not which("apksigner"):
+        log("Build-tools (zipalign/apksigner) ausentes.", "warn")
+        install_package("apksigner zipalign")
+
+def install_package(pkg_name):
+    """Instalador multi-gerenciador."""
+    managers = ["apt-get", "dnf", "pacman", "brew"]
+    for mgr in managers:
+        if which(mgr):
+            log(f"Instalando {pkg_name} via {mgr}...", "info")
+            prefix = ["sudo"] if os.getuid() != 0 and mgr != "brew" else []
+            cmd = prefix + [mgr, "install", "-y", pkg_name] if "pacman" not in mgr else prefix + ["pacman", "-S", "--noconfirm", pkg_name]
             try:
-                log("Atualizando repositórios (isso pode pedir senha)...", "info")
-                subprocess.run(["sudo", "apt-get", "update", "-y"], check=True)
-                
-                for pkg in faltantes:
-                    log(f"Instalando {pkg}...", "info")
-                    subprocess.run(["sudo", "apt-get", "install", "-y", pkg], check=True)
-                
-                log("Dependências instaladas com sucesso!", "success")
-            except Exception as e:
-                log(f"Falha na instalação automática: {e}", "error")
-                log("Por favor, instale manualmente usando: sudo apt install " + " ".join(faltantes), "info")
-        else:
-            log("Procedendo sem instalar. O script pode falhar.", "warn")
+                subprocess.run(cmd, capture_output=True)
+                return True
+            except: continue
+    return False
 
-    # Verifica dependência de biblioteca Python (pyfiglet)
+def download_apktool_manual():
+    """Garante o apktool em sistemas onde o APT falha."""
+    urls = {
+        "wrapper": "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool",
+        "jar": "https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.9.3.jar"
+    }
+    target_bin = "/usr/local/bin"
     try:
-        import pyfiglet
-    except ImportError:
-        log("Biblioteca 'pyfiglet' não encontrada. Instalando via pip...", "info")
-        subprocess.run([sys.executable, "-m", "pip", "install", "pyfiglet"], check=True)
+        if not os.access(target_bin, os.W_OK):
+            target_bin = os.path.expanduser("~/.local/bin")
+            os.makedirs(target_bin, exist_ok=True)
+            log(f"Usando diretório local do usuário: {target_bin}", "info")
+            
+        log("Baixando script wrapper...", "info")
+        urllib.request.urlretrieve(urls["wrapper"], os.path.join(target_bin, "apktool"))
+        
+        log("Baixando binário JAR v2.9.3...", "info")
+        urllib.request.urlretrieve(urls["jar"], os.path.join(target_bin, "apktool.jar"))
+        
+        subprocess.run(["chmod", "+x", os.path.join(target_bin, "apktool")])
+        log(f"Binários instalados em {target_bin}. Certifique-se que está no seu PATH.", "success")
+    except Exception as e:
+        log(f"Falha crítica no download: {e}", "error")
+        sys.exit(1)
 
-# --- FUNÇÕES CORE (MANTIDAS E REFINADAS) ---
-
-def check_env():
-    """Retorna ferramenta de assinatura disponível."""
-    if is_tool_installed("apksigner"): return "apksigner"
-    return "jarsigner" if is_tool_installed("jarsigner") else None
-
-def is_tool_installed(name):
-    return which(name) is not None
-
-def analise_apk(out):
-    """Análise estática simplificada integrada."""
-    manifest = os.path.join(out, "AndroidManifest.xml")
-    if os.path.exists(manifest):
-        with open(manifest, "r", errors="ignore") as f:
-            data = f.read()
-            if 'android:debuggable="true"' in data:
-                log("ALERTA: O APK permite depuração (debuggable=true)!", "error")
-            if 'android:networkSecurityConfig' in data:
-                log("Network Security Config detectado. Verifique res/xml.", "warn")
-
-def build_e_assinar(out, signer):
-    """Ciclo de montagem e assinatura."""
-    final_apk = f"{out}_signed.apk"
-    tmp_apk = "tmp_build.apk"
-    
-    log(f"Compilando pasta {out}...", "info")
-    res = subprocess.run(["apktool", "b", out, "-o", tmp_apk], capture_output=True, text=True)
-    
-    if res.returncode != 0:
-        log(f"Erro na compilação:\n{res.stderr}", "error")
+def build_e_assinar(out):
+    signer = which("apksigner") or which("jarsigner")
+    if not signer:
+        log("Nenhuma ferramenta de assinatura disponível.", "error")
         return
 
-    # Geração de Key se não existir
+    final = f"{out}_weaponized.apk"
+    log(f"Recompilando diretório: {out}...", "info")
+    subprocess.run(["apktool", "b", out, "-o", "tmp.apk"], capture_output=True)
+
     if not os.path.exists("debug.keystore"):
-        log("Gerando chave para assinatura técnica...", "info")
-        subprocess.run(["keytool", "-genkey", "-v", "-keystore", "debug.keystore", "-alias", "android", 
-                        "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000", 
-                        "-storepass", "android", "-keypass", "android", "-dname", "CN=Android, O=Google"], capture_output=True)
+        log("Gerando nova Keystore de auditoria...", "info")
+        subprocess.run(["keytool", "-genkey", "-v", "-keystore", "debug.keystore", "-alias", "dev", "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000", "-storepass", "android", "-keypass", "android", "-dname", "CN=Weaponizer"], capture_output=True)
 
-    # Assinatura
-    log(f"Assinando APK com {signer}...", "info")
-    if signer == "apksigner":
-        subprocess.run(["apksigner", "sign", "--ks", "debug.keystore", "--ks-pass", "pass:android", "--out", final_apk, tmp_apk])
+    log("Aplicando assinatura e selo de integridade...", "info")
+    if "apksigner" in signer:
+        subprocess.run(["apksigner", "sign", "--ks", "debug.keystore", "--ks-pass", "pass:android", "--out", final, "tmp.apk"])
     else:
-        subprocess.run(["jarsigner", "-keystore", "debug.keystore", "-storepass", "android", tmp_apk, "android"])
-        os.rename(tmp_apk, final_apk)
-    
-    if os.path.exists(tmp_apk): os.remove(tmp_apk)
-    log(f"Pronto: {final_apk}", "success")
+        subprocess.run(["jarsigner", "-keystore", "debug.keystore", "-storepass", "android", "tmp.apk", "dev"])
+        os.rename("tmp.apk", final)
 
-# --- FLUXO PRINCIPAL ---
+    if os.path.exists("tmp.apk"): os.remove(tmp_apk)
+    log(f"Artefato concluído: {final}", "success")
+    time.sleep(2)
 
 def main():
-    # 1. Verificação e Instalação (Boot)
-    instalar_dependencias()
-    
-    signer = check_env()
-    
-    # 2. Banner
-    print(f"\n{C_BOLD}{C_BLUE}======================================{C_RESET}")
-    try:
-        import pyfiglet
-        print(f"{C_GREEN}{pyfiglet.figlet_format('APK FRAMEWORK')}{C_RESET}")
-    except:
-        print(f"{C_GREEN}{C_BOLD}      APK FRAMEWORK PRO{C_RESET}")
-    print(f"Nome: Romildo (thuf)    Site: helptecinfo.com")
-    print(f"{C_BOLD}{C_BLUE}======================================{C_RESET}\n")
-
+    bootstrap()
     while True:
-        print(f"{C_BOLD}OPÇÕES:{C_RESET}")
-        print("1. Descompilar e Analisar APK")
-        print("2. Recompilar e Assinar (Weaponize)")
-        print("3. Sair")
+        exibir_banner()
+        print(f" {BOLD}OPERATIONAL MENU:{RESET}")
+        print(f" [{RED}1{RESET}] Engenharia Reversa (Decompile & Scan)")
+        print(f" [{RED}2{RESET}] Injetar Payload (Build & Sign)")
+        print(f" [{RED}3{RESET}] Terminar sessão")
         
-        op = input(f"\n{C_BOLD}Selecione > {C_RESET}").strip()
-
+        op = input(f"\n {BOLD}{RED}WEAPONIZER@{os.getlogin()}:~# {RESET}").strip()
+        
         if op == "1":
-            path = input(f"{C_BLUE}[?] Caminho do APK: {C_RESET}").strip()
+            path = input(f" {RED}»{RESET} Alvo (.apk): ").strip()
             if os.path.exists(path):
                 out = os.path.splitext(os.path.basename(path))[0]
-                subprocess.run(["apktool", "d", path, "-o", out, "-f"])
-                analise_apk(out)
-                log(f"Pasta de trabalho pronta: {out}", "success")
-            else: log("Arquivo não encontrado.", "error")
-
+                log(f"Extraindo dados de {path}...", "info")
+                subprocess.run(["apktool", "d", path, "-o", out, "-f"], capture_output=True)
+                log(f"Pasta de trabalho criada: {out}", "success")
+                input("\nPressione Enter para retornar ao HUD...")
+            else:
+                log("Arquivo não localizado.", "error")
+                time.sleep(2)
         elif op == "2":
-            out = input(f"{C_BLUE}[?] Nome da pasta descompilada: {C_RESET}").strip()
+            out = input(f" {RED}»{RESET} Pasta do projeto: ").strip()
             if os.path.isdir(out):
-                build_e_assinar(out, signer)
-            else: log("Pasta inválida.", "error")
-
+                build_e_assinar(out)
+            else:
+                log("Diretório inexistente.", "error")
+                time.sleep(2)
         elif op == "3":
-            log("Saindo...", "info")
+            log("Encerrando framework...", "info")
             break
 
 if __name__ == "__main__":
